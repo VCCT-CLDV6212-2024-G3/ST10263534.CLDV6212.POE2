@@ -5,26 +5,34 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
-public static class StoreTableInfo
+namespace ST10114423.Functions
 {
-    [Function("StoreTableInfo")]
-    public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-        ILogger log)
+    public static class StoreTableInfo
     {
-        string tableName = req.Query["tableName"];
-        string partitionKey = req.Query["partitionKey"];
-        string rowKey = req.Query["rowKey"];
-        string data = req.Query["data"];
+        [Function("StoreTableInfo")]
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+            ILogger log)
+        {
+            string tableName = req.Query["tableName"];
+            string partitionKey = req.Query["partitionKey"];
+            string rowKey = req.Query["rowKey"];
+            string data = req.Query["data"];
 
-        var connectionString = Environment.GetEnvironmentVariable("AzureStorage:ConnectionString");
-        var serviceClient = new TableServiceClient(connectionString);
-        var tableClient = serviceClient.GetTableClient(tableName);
-        await tableClient.CreateIfNotExistsAsync();
+            if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(partitionKey) || string.IsNullOrEmpty(rowKey) || string.IsNullOrEmpty(data))
+            {
+                return new BadRequestObjectResult("Table name, partition key, row key, and data must be provided.");
+            }
 
-        var entity = new TableEntity(partitionKey, rowKey) { ["Data"] = data };
-        await tableClient.AddEntityAsync(entity);
+            var connectionString = Environment.GetEnvironmentVariable("AzureStorage:ConnectionString");
+            var serviceClient = new TableServiceClient(connectionString);
+            var tableClient = serviceClient.GetTableClient(tableName);
+            await tableClient.CreateIfNotExistsAsync();
 
-        return new OkObjectResult("Data added to table");
+            var entity = new TableEntity(partitionKey, rowKey) { ["Data"] = data };
+            await tableClient.AddEntityAsync(entity);
+
+            return new OkObjectResult("Data added to table");
+        }
     }
 }
